@@ -1,0 +1,46 @@
+/* 
+The code below is written in OPL syntax.
+It can be run on IBM CPLEX Optimization studio. 
+*/
+
+
+int nbBeams =...; //No. of beams
+range Beams = 1..nbBeams; 
+int Nsc = ...; //No. of subchannels in each beam
+int nbCarriers = ...; //No. of carriers (links) 
+range CarrierInd = 1..nbCarriers;  
+
+tuple carrier {
+   int CarrierIndex; 
+   int BeamIndex; 
+   int nbSubChannels;
+}; 
+{carrier} CarrierSet = ...; 
+
+float Gamma[CarrierInd] = ...; 
+    // Interference power tolerance
+int nbSubChannels[CarrierInd] = ...;
+int BeamNb[CarrierInd] = ...;
+float Pij[CarrierInd][CarrierInd] = ...; 
+    // Per sub-channel interfering power between 
+        terminals i and j 
+
+dvar interval activate[i in CarrierInd] 
+    optional in 1..Nsc size nbSubChannels[i];
+dvar sequence seq[b in Beams] in all (i in 
+    CarrierInd : BeamNb[i]==b) activate[i]; 
+dexpr int totalActive=sum(i in CarrierInd) 
+    presenceOf(activate[i]);
+
+maximize totalActive;
+
+subject to {
+  forall (b in Beams) noOverlap(seq[b]);
+  
+  forall (i in CarrierInd){
+    sum(j in CarrierInd) presenceOf(activate[i])
+      *maxl(0, minl(endOf(activate[i]),
+        endOf(activate[j]))-maxl(startOf(activate[i]),
+          startOf(activate[j])))*Pij[i][j] <= Gamma[i]; 
+  }
+}
